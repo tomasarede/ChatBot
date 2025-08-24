@@ -19,7 +19,7 @@ import google.generativeai as genai
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 # Gemini API Key
-GEMINI_API_KEY = 'AIzaSyDOnd0FbrBBPxaoaOXWlr_VTzSoi74vXzk'
+GEMINI_API_KEY = 'YOUR_GEMIN_API_KEY' # CHANGE THIS
 genai.configure(api_key=GEMINI_API_KEY)
 gemini_model = genai.GenerativeModel("models/gemini-2.0-flash")
 
