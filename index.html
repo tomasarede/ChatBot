@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Voice-Enabled LLM Chatbot</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f4f6f9;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      flex-direction: column;
+    }
+
+    .chat-container {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+      width: 100%;
+      max-width: 800px;
+      height: 80vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      margin-bottom: 20px;
+    }
+
+    .chat-header {
+      background-color: #2c3e50;
+      color: white;
+      padding: 20px;
+      text-align: center;
+      font-size: 1.5rem;
+      font-weight: bold;
+    }
+
+    .chat-messages {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+      background: #f8f9fa;
+    }
+
+    .message {
+      margin-bottom: 15px;
+      display: flex;
+      align-items: flex-start;
+    }
+
+    .message.user {
+      justify-content: flex-end;
+    }
+
+    .message-content {
+      max-width: 70%;
+      padding: 12px 16px;
+      border-radius: 18px;
+      position: relative;
+    }
+
+    .message.user .message-content {
+      background: #2980b9;
+      color: white;
+      border-bottom-right-radius: 4px;
+    }
+
+    .message.assistant.qwen .message-content {
+      background: #ffffff;
+      color: #333;
+      border: 1px solid #e9ecef;
+      border-bottom-left-radius: 4px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .message.assistant.gemini .message-content {
+      background: #fff6eb;
+      color: #6e2f0d;
+      border: 1px solid #f7d7b4;
+      border-bottom-left-radius: 4px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+    }
+
+    .model-label {
+      font-size: 12px;
+      font-weight: bold;
+      margin-bottom: 4px;
+      display: block;
+    }
+
+    .message-controls {
+      margin-top: 8px;
+      display: flex;
+      gap: 8px;
+    }
+
+    .speak-btn {
+      background: #28a745;
+      color: white;
+      border: none;
+      padding: 4px 8px;
+      border-radius: 12px;
+      cursor: pointer;
+      font-size: 12px;
+      transition: background 0.2s;
+    }
+
+    .speak-btn:hover {
+      background: #218838;
+    }
+
+    .speak-btn:disabled {
+      background: #6c757d;
+      cursor: not-allowed;
+    }
+
+    .input-container {
+      padding: 20px;
+      background: white;
+      border-top: 1px solid #e9ecef;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .text-input {
+      flex: 1;
+      padding: 12px 16px;
+      border: 2px solid #e9ecef;
+      border-radius: 25px;
+      font-size: 16px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .text-input:focus {
+      border-color: #2980b9;
+    }
+
+    .btn {
+      padding: 12px 20px;
+      border: none;
+      border-radius: 25px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-primary {
+      background: #2980b9;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #2471a3;
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background: #6c757d;
+      color: white;
+    }
+
+    .btn-secondary:hover {
+      background: #5a6268;
+    }
+
+    .btn-danger {
+      background: #dc3545;
+      color: white;
+    }
+
+    .btn-danger:hover {
+      background: #c82333;
+    }
+
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .recording-indicator {
+      display: none;
+      color: #dc3545;
+      font-weight: bold;
+      animation: pulse 1s infinite;
+    }
+
+    @keyframes pulse {
+      0% { opacity: 1; }
+      50% { opacity: 0.5; }
+      100% { opacity: 1; }
+    }
+
+    .status-message {
+      padding: 10px;
+      text-align: center;
+      font-size: 14px;
+      color: #6c757d;
+    }
+
+    .loading {
+      display: none;
+      text-align: center;
+      padding: 20px;
+      color: #6c757d;
+    }
+
+    .loading::after {
+      content: '';
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid #f3f3f3;
+      border-top: 3px solid #2980b9;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-left: 10px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .footer {
+      color: #333;
+      background-color: #ffffff;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+      text-align: center;
+      padding: 20px;
+      max-width: 800px;
+      font-size: 15px;
+    }
+
+    .footer h3 {
+      margin-bottom: 10px;
+      color: #2c3e50;
+    }
+
+    .footer ul {
+      list-style-type: disc;
+      margin: 10px auto;
+      padding-left: 20px;
+      text-align: left;
+      display: inline-block;
+    }
+
+    .footer p {
+      margin-top: 15px;
+    }
+
+    @media (max-width: 768px) {
+      .chat-container {
+        height: 90vh;
+        margin: 10px;
+      }
+
+      .input-container {
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      .text-input {
+        width: 100%;
+        margin-bottom: 10px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="chat-container">
+    <div class="chat-header">Voice-Enabled LLM Chatbot — Group 10</div>
+    <div style="padding: 10px; text-align: center;">
+      <label for="modelSelect"><strong>Choose Model:</strong></label>
+      <select id="modelSelect" style="margin-left: 10px; padding: 5px 10px; border-radius: 10px;">
+        <option value="qwen" selected>Qwen</option>
+        <option value="gemini">Gemini</option>
+      </select>
+    </div>
+    <div class="chat-messages" id="chatMessages">
+      <div class="status-message">
+        Welcome! You can type your message or use voice input by clicking the microphone button.
+      </div>
+    </div>
+    <div class="loading" id="loading">Processing...</div>
+    <div class="input-container">
+      <input type="text" id="textInput" class="text-input" placeholder="Type your message here..." maxlength="500" />
+      <button id="micBtn" class="btn btn-secondary" title="Voice Input">🎤</button>
+      <button id="sendBtn" class="btn btn-primary" title="Send Message">Send</button>
+      <div class="recording-indicator" id="recordingIndicator">🔴 Recording...</div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <h3>Project Summary</h3>
+    <p>This chatbot was developed for the <strong>Spoken Language Processing</strong> course at <strong>Instituto Superior Técnico</strong>, under the guidance of Prof. <strong>Bruno Martins</strong>.</p>
+    <ul>
+      <li><strong>Whisper (tiny/base)</strong> — for transcribing voice to text</li>
+      <li><strong>Qwen1.5-0.5B-Chat</strong> — a lightweight large language model for response generation</li>
+      <li><strong>Gemini 2.0 Flash</strong> — a free option of Gemini provided by Google</li>
+
+      <li><strong>Kokoro</strong> — a custom TTS engine used for converting text back to speech</li>
+    </ul>
+    <p><strong>Authors:</strong> Tomás Arêde and Filipe Vaz — Group 10, SLP 2025</p>
+  </div>
+
+  <script>
+    class VoiceChatbot {
+      constructor() {
+        this.sessionIdQwen = 'qwen_' + Date.now();
+        this.sessionIdGemini = 'gemini_' + Date.now();
+        this.isRecording = false;
+        this.audioChunks = [];
+        this.initializeElements();
+        this.bindEvents();
+        this.setupMediaRecorder();
+      }
+
+      initializeElements() {
+        this.chatMessages = document.getElementById('chatMessages');
+        this.textInput = document.getElementById('textInput');
+        this.sendBtn = document.getElementById('sendBtn');
+        this.micBtn = document.getElementById('micBtn');
+        this.recordingIndicator = document.getElementById('recordingIndicator');
+        this.loading = document.getElementById('loading');
+        this.modelSelect = document.getElementById('modelSelect');
+      }
+
+      bindEvents() {
+        this.sendBtn.addEventListener('click', () => this.sendMessage());
+        this.textInput.addEventListener('keypress', (e) => {
+          if (e.key === 'Enter') this.sendMessage();
+        });
+        this.micBtn.addEventListener('click', () => this.toggleRecording());
+      }
+
+      async setupMediaRecorder() {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          this.mediaRecorder = new MediaRecorder(stream);
+          this.mediaRecorder.ondataavailable = (event) => this.audioChunks.push(event.data);
+          this.mediaRecorder.onstop = () => this.processRecording();
+        } catch (error) {
+          console.error('Microphone access denied:', error);
+          this.micBtn.disabled = true;
+          this.micBtn.title = 'Microphone access denied';
+        }
+      }
+
+      toggleRecording() {
+        if (!this.mediaRecorder) return;
+        this.isRecording ? this.stopRecording() : this.startRecording();
+      }
+
+      startRecording() {
+        this.audioChunks = [];
+        this.mediaRecorder.start();
+        this.isRecording = true;
+        this.micBtn.classList.replace('btn-secondary', 'btn-danger');
+        this.micBtn.textContent = '⏹️';
+        this.recordingIndicator.style.display = 'block';
+      }
+
+      stopRecording() {
+        this.mediaRecorder.stop();
+        this.isRecording = false;
+        this.micBtn.classList.replace('btn-danger', 'btn-secondary');
+        this.micBtn.textContent = '🎤';
+        this.recordingIndicator.style.display = 'none';
+      }
+
+      async processRecording() {
+        if (this.audioChunks.length === 0) return;
+        this.showLoading(true);
+        try {
+          const audioBlob = new Blob(this.audioChunks, { type: 'audio/wav' });
+          const formData = new FormData();
+          formData.append('audio', audioBlob, 'recording.wav');
+          const response = await fetch('/transcribe', { method: 'POST', body: formData });
+          const data = await response.json();
+          if (data.error) throw new Error(data.error);
+          this.textInput.value = data.transcription;
+          this.sendMessage();
+        } catch (error) {
+          console.error('Transcription error:', error);
+          this.addMessage('Error: Failed to transcribe audio. Please try again.', 'assistant');
+        } finally {
+          this.showLoading(false);
+        }
+      }
+
+      async sendMessage() {
+        const message = this.textInput.value.trim();
+        if (!message) return;
+        const model = this.modelSelect.value;
+        const session_id = model === 'qwen' ? this.sessionIdQwen : this.sessionIdGemini;
+        this.addMessage(message, 'user');
+        this.textInput.value = '';
+        this.showLoading(true);
+        try {
+          const response = await fetch('/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message, model, session_id })
+          });
+          const data = await response.json();
+          if (data.error) throw new Error(data.error);
+          this.addMessage(data.response, 'assistant', model);
+        } catch (error) {
+          console.error('Chat error:', error);
+          this.addMessage('Error: Failed to get response. Please try again.', 'assistant');
+        } finally {
+          this.showLoading(false);
+        }
+      }
+
+      addMessage(content, role, model = null) {
+        const msgDiv = document.createElement('div');
+        msgDiv.className = `message ${role} ${model || ''}`;
+
+        const contentDiv = document.createElement('div');
+        contentDiv.className = 'message-content';
+
+        if (role === 'assistant') {
+          const label = document.createElement('span');
+          label.className = 'model-label';
+          label.textContent = model === 'gemini' ? 'Gemini ✨' : 'Qwen 🧠';
+          contentDiv.appendChild(label);
+        }
+
+        const textNode = document.createElement('div');
+        textNode.textContent = content;
+        contentDiv.appendChild(textNode);
+
+        msgDiv.appendChild(contentDiv);
+
+        if (role === 'assistant') {
+          const controls = document.createElement('div');
+          controls.className = 'message-controls';
+          const btn = document.createElement('button');
+          btn.className = 'speak-btn';
+          btn.textContent = '🔊 Speak';
+          btn.onclick = () => this.speakText(content, btn);
+          controls.appendChild(btn);
+          contentDiv.appendChild(controls);
+        }
+
+        this.chatMessages.appendChild(msgDiv);
+        this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
+      }
+
+      async speakText(text, button) {
+        if (!text) return;
+        button.disabled = true;
+        button.textContent = '🔊 Speaking...';
+        try {
+          const response = await fetch('/synthesize', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text })
+          });
+          const data = await response.json();
+          if (data.error) throw new Error(data.error);
+          const audioData = atob(data.audio);
+          const buffer = new ArrayBuffer(audioData.length);
+          const view = new Uint8Array(buffer);
+          for (let i = 0; i < audioData.length; i++) view[i] = audioData.charCodeAt(i);
+          const blob = new Blob([buffer], { type: 'audio/wav' });
+          const url = URL.createObjectURL(blob);
+          const audio = new Audio(url);
+          audio.onended = () => {
+            URL.revokeObjectURL(url);
+            button.disabled = false;
+            button.textContent = '🔊 Speak';
+          };
+          audio.play();
+        } catch (error) {
+          console.error('Speech synthesis error:', error);
+          button.disabled = false;
+          button.textContent = '🔊 Speak';
+          if ('speechSynthesis' in window) {
+            const utter = new SpeechSynthesisUtterance(text);
+            utter.onend = () => {
+              button.disabled = false;
+              button.textContent = '🔊 Speak';
+            };
+            speechSynthesis.speak(utter);
+          }
+        }
+      }
+
+      showLoading(show) {
+        this.loading.style.display = show ? 'block' : 'none';
+        this.sendBtn.disabled = show;
+        this.micBtn.disabled = show;
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => new VoiceChatbot());
+  </script>
+</body>
+</html>
